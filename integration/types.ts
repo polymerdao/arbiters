@@ -1,5 +1,5 @@
 // integration/types.ts
-import { encodeAbiParameters } from 'viem'
+import { encodeAbiParameters, keccak256 } from 'viem'
 
 // EIP-712 Domain definition for PolymerArbiter
 export const EIP712_DOMAIN = {
@@ -7,6 +7,33 @@ export const EIP712_DOMAIN = {
   version: '1',
   // Note: chainId will be set dynamically based on deployment
 }
+
+// Solidity Order struct definition from PolymerArbiter.sol
+export interface Order {
+  claimHash: `0x${string}`
+  destinationChainId: bigint 
+  destinationSettler: `0x${string}`
+  token: `0x${string}`
+  recipient: `0x${string}`
+  amount: bigint
+}
+
+// Compact type definition for EIP-712 signing
+export const COMPACT_TYPE = [
+  { name: 'arbiter', type: 'address' },
+  { name: 'sponsor', type: 'address' },
+  { name: 'nonce', type: 'uint256' },
+  { name: 'expires', type: 'uint256' },
+  { name: 'id', type: 'uint256' },
+  { name: 'amount', type: 'uint256' }
+]
+
+// OnchainCrossChainOrder type definition from ERC7683
+export const ONCHAIN_ORDER_TYPE = [
+  { name: 'fillDeadline', type: 'uint32' },
+  { name: 'orderDataType', type: 'bytes32' },
+  { name: 'orderData', type: 'bytes' }
+]
 
 // Order type definition for EIP-712 signing
 export const ORDER_TYPE = [
@@ -17,28 +44,6 @@ export const ORDER_TYPE = [
   { name: 'recipient', type: 'address' },
   { name: 'amount', type: 'uint256' }
 ]
-
-// Order interface
-export interface Order {
-  claimHash: `0x${string}`
-  destinationChainId: bigint
-  destinationSettler: `0x${string}`
-  token: `0x${string}`
-  recipient: `0x${string}`
-  amount: bigint
-}
-
-// Helper function to encode Order for TheCompact witness data
-export function encodeOrder(order: Order): `0x${string}` {
-  return encodeAbiParameters(ORDER_TYPE, [
-    order.claimHash,
-    order.destinationChainId,
-    order.destinationSettler,
-    order.token,
-    order.recipient,
-    order.amount
-  ])
-}
 
 // Constants
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'

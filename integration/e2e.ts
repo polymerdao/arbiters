@@ -1,18 +1,14 @@
 import { createPublicClient, createWalletClient, http, parseEther, encodeAbiParameters, encodeEventTopics, keccak256 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { optimism, base } from 'viem/chains'
-import { Order, ORDER_TYPE, ORDER_TYPE_HASH, ZERO_ADDRESS } from './types'
+import { COMPACT_TYPE, ONCHAIN_ORDER_TYPE, Order, ORDER_TYPE, ORDER_TYPE_HASH, ZERO_ADDRESS } from './types'
 import { readFileSync } from 'fs'
 
 import TheCompact from '../out/TheCompact.sol/TheCompact.json' assert { type: 'json' }
 import PolymerArbiter from '../out/PolymerArbiter.sol/PolymerArbiter.json' assert { type: 'json' }
 
-const COMPACT_TYPEHASH = keccak256(
-  encodeAbiParameters(
-    ['string'],
-    ['Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)']
-  )
-)
+// keccak256(bytes("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"))
+const COMPACT_TYPEHASH = "0xcdca950b17b5efc016b74b912d8527dfba5e404a688cbc3dab16cb943287fec2"
 
 interface Compact {
   arbiter: `0x${string}`
@@ -137,6 +133,9 @@ async function main() {
   })
 
   const depositReceipt = await optimismPublicClient.waitForTransactionReceipt({ hash: depositTx })
+  if (!depositReceipt.logs[0]?.topics[1]) {
+	throw new Error('Failed to get token ID from deposit receipt')
+  }
   const tokenId = BigInt(depositReceipt.logs[0].topics[1])
   console.log(`Received ERC6909 token ID: ${tokenId}`)
 
@@ -152,14 +151,7 @@ async function main() {
 
   const compactHash = keccak256(
     encodeAbiParameters(
-      [
-        { name: 'arbiter', type: 'address' },
-        { name: 'sponsor', type: 'address' },
-        { name: 'nonce', type: 'uint256' },
-        { name: 'expires', type: 'uint256' },
-        { name: 'id', type: 'uint256' },
-        { name: 'amount', type: 'uint256' }
-      ],
+      COMPACT_TYPE,
       [
         compact.arbiter,
         compact.sponsor,
@@ -174,7 +166,7 @@ async function main() {
   console.log('Registering Compact...')
   const registerTx = await optimismClient.writeContract({
     address: deployments.optimism.compact,
-    abi: COMPACT_ABI,
+    abi: TheCompact.abi,
     functionName: 'register',
     args: [compactHash, COMPACT_TYPEHASH, DEFAULT_DEADLINE]
   })
@@ -184,7 +176,7 @@ async function main() {
   // Step 3: Create Order and open it on PolymerArbiter
   const order: Order = {
     claimHash: compactHash,
-    destinationChainId: base.id,
+    destinationChainId: BigInt(base.id),
     destinationSettler: deployments.base.arbiter as `0x${string}`,
     token: ZERO_ADDRESS as `0x${string}`,
     recipient: account.address,
@@ -223,7 +215,7 @@ async function main() {
     functionName: 'fill',
     args: [
       keccak256(onchainOrder.orderData),
-      encodeAbiParameters(['tuple(uint32 fillDeadline, bytes32 orderDataType, bytes orderData)'], [onchainOrder]),
+      encodeAbiParameters(ONCHAIN_ORDER_TYPE, [onchainOrder]),
       '0x' // No filler data needed
     ],
     value: TEST_AMOUNT
