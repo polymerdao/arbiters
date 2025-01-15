@@ -17,3 +17,4 @@ node_modules
 
 # hyperlane deployment artifacts
 configs/chains/*/addresses.yaml
+.aider*
