@@ -1,8 +1,7 @@
 import { createPublicClient, createWalletClient, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
-import { optimism, base } from 'viem/chains'
+import { optimismSepolia, baseSepolia } from 'viem/chains'
 import { config } from 'dotenv'
-import { readFileSync } from 'fs'
 
 // Load environment variables
 config()
@@ -21,28 +20,23 @@ async function main() {
   // Initialize clients
   const optimismClient = createWalletClient({
     account,
-    chain: optimism,
+    chain: optimismSepolia,
     transport: http()
   })
 
   const optimismPublicClient = createPublicClient({
-    chain: optimism,
+    chain: optimismSepolia,
     transport: http()
   })
 
   const baseClient = createWalletClient({
     account,
-    chain: base,
+    chain: baseSepolia,
     transport: http()
   })
 
   const basePublicClient = createPublicClient({
-    chain: base,
-    transport: http()
-  })
-
-  const basePublicClient = createPublicClient({
-    chain: base,
+    chain: baseSepolia,
     transport: http()
   })
 
@@ -87,8 +81,8 @@ async function main() {
   // 3. Deploy PolymerArbiter to Base
   console.log('Deploying PolymerArbiter to Base...')
   const baseArbiterDeployTx = await baseClient.deployContract({
-    abi: ARBITER_ARTIFACT.abi,
-    bytecode: ARBITER_ARTIFACT.bytecode.object as `0x${string}`,
+    abi: PolymerArbiter.abi,
+    bytecode: PolymerArbiter.bytecode.object as `0x${string}`,
     args: [
       '0x0000000000000000000000000000000000000000', // No TheCompact on Base
       '0x0000000000000000000000000000000000000000', // No CrossL2Prover on Base

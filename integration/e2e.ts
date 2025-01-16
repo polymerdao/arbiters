@@ -1,6 +1,6 @@
 import { createPublicClient, createWalletClient, http, parseEther, encodeAbiParameters, encodeEventTopics, keccak256 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
-import { optimism, base } from 'viem/chains'
+import { optimismSepolia, baseSepolia } from 'viem/chains'
 import { COMPACT_TYPE, ONCHAIN_ORDER_TYPE, Order, ORDER_TYPE, ORDER_TYPE_HASH, ZERO_ADDRESS } from './types'
 import { readFileSync } from 'fs'
 
@@ -9,6 +9,9 @@ import PolymerArbiter from '../out/PolymerArbiter.sol/PolymerArbiter.json' asser
 
 // keccak256(bytes("Compact(address arbiter,address sponsor,uint256 nonce,uint256 expires,uint256 id,uint256 amount)"))
 const COMPACT_TYPEHASH = "0xcdca950b17b5efc016b74b912d8527dfba5e404a688cbc3dab16cb943287fec2"
+
+const POLYMER_API_URL = 'https://proof.sepolia.polymer.zone'
+const POLYMER_API_KEY = process.env.POLYMER_API_KEY
 
 interface Compact {
   arbiter: `0x${string}`
@@ -21,11 +24,11 @@ interface Compact {
 
 // Helper functions for proof generation
 async function requestReceiptProof(srcChainId: number, dstChainId: number, blockNumber: bigint, txIndex: number) {
-  const response = await fetch(process.env.POLYMER_API_URL!, {
+  const response = await fetch(POLYMER_API_URL!, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.POLYMER_API_KEY}`
+      'Authorization': `Bearer ${POLYMER_API_KEY}`
     },
     body: JSON.stringify({
       jsonrpc: '2.0',
@@ -39,11 +42,11 @@ async function requestReceiptProof(srcChainId: number, dstChainId: number, block
 }
 
 async function queryReceiptProof(jobId: string) {
-  const response = await fetch(process.env.POLYMER_API_URL!, {
+  const response = await fetch(POLYMER_API_URL!, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.POLYMER_API_KEY}`
+      'Authorization': `Bearer ${POLYMER_API_KEY}`
     },
     body: JSON.stringify({
       jsonrpc: '2.0',
@@ -83,23 +86,23 @@ async function main() {
   // Initialize clients with built-in RPC URLs
   const optimismClient = createWalletClient({
     account,
-    chain: optimism,
+    chain: optimismSepolia,
     transport: http()
   })
 
   const optimismPublicClient = createPublicClient({
-    chain: optimism,
+    chain: optimismSepolia,
     transport: http()
   })
 
   const baseClient = createWalletClient({
     account,
-    chain: base,
+    chain: baseSepolia,
     transport: http()
   })
 
   const basePublicClient = createPublicClient({
-    chain: base,
+    chain: baseSepolia,
     transport: http()
   })
 
@@ -176,7 +179,7 @@ async function main() {
   // Step 3: Create Order and open it on PolymerArbiter
   const order: Order = {
     claimHash: compactHash,
-    destinationChainId: BigInt(base.id),
+    destinationChainId: BigInt(baseSepolia.id),
     destinationSettler: deployments.base.arbiter as `0x${string}`,
     token: ZERO_ADDRESS as `0x${string}`,
     recipient: account.address,
@@ -250,8 +253,8 @@ async function main() {
   // Step 5: Get proof from Polymer API
   console.log('Requesting receipt proof...')
   const jobId = await requestReceiptProof(
-    base.id,
-    optimism.id,
+    baseSepolia.id,
+    optimismSepolia.id,
     block.number,
     fillReceipt.transactionIndex
   )
