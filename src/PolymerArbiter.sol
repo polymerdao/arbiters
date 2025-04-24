@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {ReentrancyGuard} from "openzeppelin-contracts/contracts/security/ReentrancyGuard.sol";
-import {ICrossL2Prover} from "vibc-core-smart-contracts/contracts/interfaces/ICrossL2Prover.sol";
+import {ICrossL2ProverV2} from "lib/prover-contracts/contracts/interfaces/ICrossL2ProverV2.sol";
 import {
     OnchainCrossChainOrder,
     GaslessCrossChainOrder,
@@ -45,10 +45,10 @@ contract PolymerArbiter is IOriginSettler, IDestinationSettler, ReentrancyGuard 
     // Track filled orders on destination chain
     mapping(bytes32 => bool) public filledOrders;
 
-    ICrossL2Prover public immutable CROSS_L2_PROVER;
+    ICrossL2ProverV2 public immutable CROSS_L2_PROVER;
     ITheCompactClaims public immutable COMPACT;
 
-    constructor(ICrossL2Prover crossL2Prover_, ITheCompactClaims compact_) {
+    constructor(ICrossL2ProverV2 crossL2Prover_, ITheCompactClaims compact_) {
         CROSS_L2_PROVER = crossL2Prover_;
         COMPACT = compact_;
     }
@@ -124,18 +124,37 @@ contract PolymerArbiter is IOriginSettler, IDestinationSettler, ReentrancyGuard 
     ) external nonReentrant {
         // Verify the fill proof from destination chain
         (
-            ,
+            uint32 chainId,
             address emittingContract,
-            bytes[] memory topics,
-        ) = CROSS_L2_PROVER.validateEvent(logIndex, proof);
+            bytes memory topics,
+            bytes memory unindexedData
+        ) = CROSS_L2_PROVER.validateEvent(proof);
 
         // Verify event came from this contract on destination chain
         if (emittingContract != address(this)) revert InvalidEventSender();
 
+        // Verify log index matches
+        (,,,uint8 actualLogIndex) = CROSS_L2_PROVER.inspectLogIdentifier(proof);
+        if (actualLogIndex != uint8(logIndex)) revert InvalidCounterpartyEvent();
+
         // Verify FillExecuted event with correct orderId
-        bytes[] memory expectedTopics = new bytes[](2);
-        expectedTopics[0] = bytes.concat(FillExecuted.selector);
-        expectedTopics[1] = bytes.concat(orderId);
+        bytes32[] memory expectedTopics = new bytes32[](2);
+        expectedTopics[0] = FillExecuted.selector;
+        expectedTopics[1] = orderId;
+
+        // Compare topics directly
+        bytes32[] memory topicsArray = new bytes32[](2);
+        require(topics.length >= 64, "Invalid topics length"); // 2 * 32 bytes
+
+        assembly {
+            let topicsPtr := add(topics, 32)  // Skip length prefix
+            for { let i := 0 } lt(i, 2) { i := add(i, 1) } {
+                mstore(
+                    add(add(topicsArray, 32), mul(i, 32)),
+                    mload(add(topicsPtr, mul(i, 32)))
+                )
+            }
+        }
 
         if (!Bytes.equal(abi.encode(topics), abi.encode(expectedTopics))) {
             revert InvalidCounterpartyEvent();
