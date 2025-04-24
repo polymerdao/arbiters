@@ -1,0 +1,10 @@
+{
+  "optimism": {
+    "compact": "0xce1884cefd448cd2261bbd7019c3ddfa9a997b5c",
+    "arbiter": "0x2a83916bae2714bf40ffb87b3e857ce0a32f661b",
+    "alwaysOKAllocator": "0x668df095a2d745cd6514af488d337b681433a8f4"
+  },
+  "base": {
+    "arbiter": "0xe8ac08e3694135cae105bb50f1ef1360563d3257"
+  }
+}

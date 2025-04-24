@@ -23,7 +23,7 @@ interface Compact {
 }
 
 // Helper functions for proof generation
-async function requestReceiptProof(srcChainId: number, dstChainId: number, blockNumber: bigint, txIndex: number) {
+async function requestLogProof(srcChainId: number, blockNumber: bigint, txIndex: number, localLogIndex: number) {
   const response = await fetch(POLYMER_API_URL!, {
     method: 'POST',
     headers: {
@@ -33,15 +33,15 @@ async function requestReceiptProof(srcChainId: number, dstChainId: number, block
     body: JSON.stringify({
       jsonrpc: '2.0',
       id: 1,
-      method: 'receipt_requestProof',
-      params: [srcChainId, dstChainId, blockNumber, txIndex]
+      method: 'log_requestProof',
+      params: [srcChainId, blockNumber, txIndex, localLogIndex]
     })
   })
   const data = await response.json()
   return data.result
 }
 
-async function queryReceiptProof(jobId: string) {
+async function queryLogProof(jobId: string) {
   const response = await fetch(POLYMER_API_URL!, {
     method: 'POST',
     headers: {
@@ -51,7 +51,7 @@ async function queryReceiptProof(jobId: string) {
     body: JSON.stringify({
       jsonrpc: '2.0',
       id: 1,
-      method: 'receipt_queryProof',
+      method: 'log_queryProof',
       params: [jobId]
     })
   })
@@ -61,7 +61,7 @@ async function queryReceiptProof(jobId: string) {
 
 async function pollForProof(jobId: string, maxAttempts = 30, interval = 2000): Promise<string> {
   for (let i = 0; i < maxAttempts; i++) {
-    const result = await queryReceiptProof(jobId)
+    const result = await queryLogProof(jobId)
 
     if (result.status === 'complete') {
       return result.proof
@@ -251,12 +251,12 @@ async function main() {
 
 
   // Step 5: Get proof from Polymer API
-  console.log('Requesting receipt proof...')
-  const jobId = await requestReceiptProof(
+  console.log('Requesting log proof...')
+  const jobId = await requestLogProof(
     baseSepolia.id,
-    optimismSepolia.id,
     block.number,
-    fillReceipt.transactionIndex
+    fillReceipt.transactionIndex,
+    logIndex
   )
   console.log('Proof job ID:', jobId)
 
