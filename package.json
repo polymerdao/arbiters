@@ -13,8 +13,8 @@
     "viem": "^2.21.55"
   },
   "scripts": {
-    "deploy": "ts-node integration/deploy.ts",
-    "test:integration": "ts-node integration/test-polymer-flow.ts",
+    "deploy": "tsx integration/deploy.ts",
+    "test:integration": "tsx integration/e2e.ts",
     "leftpad": "node -e \"console.log('0x' + '0'.repeat(32*2 - (process.argv[1].slice(2).length)) + process.argv[1].slice(2))\"",
     "typecheck": "tsc --noEmit"
   },
@@ -22,7 +22,7 @@
   "devDependencies": {
     "@hyperlane-xyz/cli": "^7.1.0",
     "@types/node": "^20.11.19",
-    "ts-node": "^10.9.0",
+    "tsx": "^4.19.2",
     "typescript": "^5.0.0"
   }
 }
